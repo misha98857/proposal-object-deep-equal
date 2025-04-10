@@ -5,7 +5,9 @@ A TC39 proposal to add `Object.deepEqual`: a standard method for deep structural
 ## Status
 
 Stage: 0
+
 Champions: TBD
+
 Authors: Mikhail Efanov (@misha98857)
 
 ---

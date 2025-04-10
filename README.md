@@ -1,50 +1,97 @@
-# template-for-proposals
+# `Object.deepEqual`
 
-A repository template for ECMAScript proposals.
+A TC39 proposal to add `Object.deepEqual`: a standard method for deep structural equality checks between two values in JavaScript. It compares objects, arrays, maps, sets, and other types recursively, handling edge cases like circular references and NaN correctly. This aims to eliminate the need for external libraries like Lodash's `_.isEqual`, offering a consistent and native solution for deep comparisons.
 
-## Before creating a proposal
+## Status
 
-Please ensure the following:
-  1. You have read the [process document](https://tc39.github.io/process-document/)
-  1. You have reviewed the [existing proposals](https://github.com/tc39/proposals/)
-  1. You are aware that your proposal requires being a member of TC39, or locating a TC39 delegate to “champion” your proposal
+Stage: 0
+Champions: TBD
+Authors: Mikhail Efanov (@misha98857)
 
-## Create your proposal repo
+---
 
-Follow these steps:
-  1. Click the green [“use this template”](https://github.com/tc39/template-for-proposals/generate) button in the repo header. (Note: Do not fork this repo in GitHub's web interface, as that will later prevent transfer into the TC39 organization)
-  1. Update ecmarkup and the biblio to the latest version: `npm install --save-dev ecmarkup@latest && npm install --save-dev --save-exact @tc39/ecma262-biblio@latest`.
-  1. Go to your repo settings page:
-      1. Under “General”, under “Features”, ensure “Issues” is checked, and disable “Wiki”, and “Projects” (unless you intend to use Projects)
-      1. Under “Pull Requests”, check “Always suggest updating pull request branches” and “automatically delete head branches”
-      1. Under the “Pages” section on the left sidebar, and set the source to “deploy from a branch”, select “gh-pages” in the branch dropdown, and then ensure that “Enforce HTTPS” is checked.
-      1. Under the “Actions” section on the left sidebar, under “General”, select “Read and write permissions” under “Workflow permissions” and click “Save”
-  1. [“How to write a good explainer”][explainer] explains how to make a good first impression.
+## Motivation
 
-      > Each TC39 proposal should have a `README.md` file which explains the purpose
-      > of the proposal and its shape at a high level.
-      >
-      > ...
-      >
-      > The rest of this page can be used as a template ...
+JavaScript currently lacks a standard built-in way to perform deep structural comparisons between objects. Developers are forced to rely on third-party libraries such as Lodash (`_.isEqual`), deep-equal, or implement their own recursive comparison logic, which can be error-prone, inconsistent, and inefficient.
 
-      Your explainer can point readers to the `index.html` generated from `spec.emu`
-      via markdown like
+Adding a native `Object.deepEqual` would:
 
-      ```markdown
-      You can browse the [ecmarkup output](https://ACCOUNT.github.io/PROJECT/)
-      or browse the [source](https://github.com/ACCOUNT/PROJECT/blob/HEAD/spec.emu).
-      ```
+- Provide a canonical, spec-compliant, and optimized way to check deep equality.
+- Improve ergonomics by covering a common use case without third-party dependencies.
+- Enhance code clarity by expressing deep comparison intent explicitly.
+- Align JavaScript with other major programming languages that offer deep equality out of the box.
 
-      where *ACCOUNT* and *PROJECT* are the first two path elements in your project's Github URL.
-      For example, for github.com/**tc39**/**template-for-proposals**, *ACCOUNT* is “tc39”
-      and *PROJECT* is “template-for-proposals”.
+---
 
+## Proposal
 
-## Maintain your proposal repo
+Introduce a static method `Object.deepEqual(a, b)` that returns `true` if the inputs are deeply structurally equal, and `false` otherwise.
 
-  1. Make your changes to `spec.emu` (ecmarkup uses HTML syntax, but is not HTML, so I strongly suggest not naming it “.html”)
-  1. Any commit that makes meaningful changes to the spec, should run `npm run build` to verify that the build will succeed and the output looks as expected.
-  1. Whenever you update `ecmarkup`, run `npm run build` to verify that the build will succeed and the output looks as expected.
+```js
+Object.deepEqual({ a: 1, b: [2, 3] }, { a: 1, b: [2, 3] }); // true
+Object.deepEqual({ a: 1 }, { a: 1, b: 2 }); // false
+Object.deepEqual(NaN, NaN); // true
+Object.deepEqual(Object(1), Object(1)); // true
+Object.deepEqual([1, { x: 2 }], [1, { x: 2 }]); // true
+```
 
-  [explainer]: https://github.com/tc39/how-we-work/blob/HEAD/explainer.md
+---
+
+## Semantic
+
+- Performs a deep, recursive comparison of enumerable own properties.
+- Follows the SameValueZero algorithm for primitive equality.
+- Handles objects, arrays, typed arrays, Maps, Sets, Dates, RegExps, and boxed primitives.
+- Correctly handles circular references.
+- Does not compare prototype chains, property descriptors, or non-enumerable properties.
+- Does not invoke getters or consider symbol properties (TBD).
+
+---
+
+## Edge Cases
+
+```js
+Object.deepEqual(new Set([1, 2]), new Set([2, 1])); // true
+Object.deepEqual({ a: NaN }, { a: NaN }); // true
+Object.deepEqual(new Date("2023-01-01"), new Date("2023-01-01")); // true
+Object.deepEqual({ x: undefined }, {}); // false
+```
+
+---
+
+## Circular References
+
+```js
+const a = {};
+a.self = a;
+const b = {};
+b.self = b;
+Object.deepEqual(a, b); // true
+```
+
+--- 
+
+## Prior Art
+
+- _.isEqual (Lodash)
+- assert.deepEqual (Node.js)
+- fast-deep-equal, deep-equal, ramda.equals, deep-equal
+- Python’s == for dicts/lists, Java’s .equals(), Rust’s PartialEq
+
+## Alternatives Considered
+
+- Adding .deepEquals() as a method on Object.prototype (risk of collisions and pollution).
+- Adding a new global function deepEqual(a, b) (less discoverable and inconsistent with existing Object.* methods).
+- Using JSON.stringify for deep comparison (fails with functions, undefined, circular structures, non-enumerables, etc.)
+
+## API
+
+```js
+namespace Object {
+  function deepEqual(a: unknown, b: unknown): boolean;
+}
+```
+
+## Polyfill
+
+TBD
